@@ -73,7 +73,7 @@ for j in range(size):
     var_s[j] = np.std(ss)   
     
 tss=Timepoints
-#PLOT INCERTEZA
+#PLOT Uncertanty
 plt.plot(tss,exp_s, lw=2, color='blue', label='W (mean)')
 plt.fill_between(tss.ravel(),exp_s+var_s, exp_s-var_s, facecolor='blue', alpha=0.5, label='S (std)')
 plt.xlabel("tempo")

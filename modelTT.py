@@ -29,7 +29,7 @@ class TTCellModel:
         i=0;
         for val  in (TTCellModel.parametersN):
             try:
-                params[val]=ps[i]
+                params[val]=ps[val]
                 i+=1
             except:
                 params[val]=-100
