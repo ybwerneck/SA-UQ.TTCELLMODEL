@@ -25,13 +25,15 @@ import timeit
 from modelTT import TTCellModel
 import math
 
+#Choosing Parameters of Interest
+TTCellModel.setParametersOfInterest(["gK1","gKs","gKr"])
 
 
 #Simulation size parameteres
 
 
 ti=0
-tf=1000
+tf=300
 dt=0.01
 dtS=1
 size=int(TTCellModel.setSizeParameters(ti, tf, dt, dtS)[0])  #returns excpeted size of simulation output given size parameters
@@ -48,15 +50,14 @@ gCal =   1.750e-04
 gbca = 5.920e-04
 gto =  2.940e-01
 
-low=0.5
+low=0.3
 high=1.1
+
 
 gK1d  = cp.Uniform(gK1*low,gK1*high)
 gKsd  = cp.Uniform(gKs*0.9,gKs*1.1)
 gKrd  = cp.Uniform(gKr*low,gKr*high)
-gNad  = cp.Uniform(gNa*low,gNa*high)
-
-dist = cp.J(gK1d,gKsd,gKrd,gNad)
+dist = cp.J(gK1d,gKsd,gKrd)
 
 
 samples = dist.sample(Ns)

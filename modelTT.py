@@ -17,19 +17,22 @@ from SALib.sample import saltelli
 from SALib.analyze import sobol
 import timeit
 import re
+import collections
 
 class TTCellModel:
     tf=1000
     ti=0
     dt=0.01
     dtS=1
-    parametersN={"gK1":-100,"gKs":-100,"gKr":-100,"gNa":-100,"gbna":-100,"gCal":-100,"gbca":-100,"gto":-100}
+    parametersN=["gK1","gKs","gKr","gNa","gbna","gCal","gbca","gto"]
+    def setParametersOfInterest(parametersN):
+        TTCellModel.parametersN=parametersN
     def parametize(self,ps):
         params={}
         i=0;
         for val  in (TTCellModel.parametersN):
             try:
-                params[val]=ps[val]
+                params[val]=ps[i]
                 i+=1
             except:
                 params[val]=-100
@@ -37,14 +40,11 @@ class TTCellModel:
     
     def __init__(self,params):
         self.parameters = self.parametize(params)
-
     
     @staticmethod
     def getSimSize(): #Returns size of result vector for given simulation size parameters, usefull for knowing beforehand the number of datapoints to compare
         n=TTCellModel("").run().shape
-        print(n)
         return n
-    
     
     @staticmethod
     def setSizeParameters(ti,tf,dt,dtS):
@@ -103,11 +103,13 @@ class TTCellModel:
         matrix={}
         try:
             string = output.stdout.read().decode("utf-8")
+            #print(string)
             matrix = np.matrix(string)
             return matrix
         
         except:
             print(args)
+            print(string)
             print(params)
             print("\n")
             
