@@ -27,7 +27,7 @@ import math
 
 
 def calcula_loo(y, poly_exp, samples):
-    nsamp = samples.shape[0]
+    nsamp = samples.shape[1]
     
     deltas = np.empty(nsamp)
     samps = samples.T
@@ -40,10 +40,14 @@ def calcula_loo(y, poly_exp, samples):
 
         subs_poly = cp.fit_regression(poly_exp, subs_samples.T, subs_y)
         yhat = cp.call(subs_poly, samps[i,:])
-        deltas[i] = np.mean(abs(y[i] - yhat))
-
-    y_std = np.std(y)
-    acc = 1.0 - np.mean(deltas)/np.mean(y_std)
+        deltas[i] = np.mean(abs(y[i] - yhat)) ##Delta E para o polinomio gerado excluindo cada sample
+        
+    y_std=np.zeros((y[0].shape[0]))
+    
+    for x in range(y[0].shape[0]):
+        y_std[x]=np.std([y[i][x] for i in (range(nsamp))]) # STD for each poin in QOI
+    
+    acc = 1.0 - np.mean(deltas)/np.mean(y_std)  ## E= deltAS/nsamp, V= mean(STD in each QOI)
     return acc
 
 labels={"gK1","gKs","gKr","gNa","gbna","gCal","gbca","gto"}
@@ -61,7 +65,7 @@ size=TTCellModel.setSizeParameters(ti, tf, dt, dtS)  #returns excpeted size of s
 Timepoints=TTCellModel.getEvalPoints()
 
 #gPC method parameters
-p = 2 # polynomial degree
+p = 3 # polynomial degree
 Np = math.factorial ( nPar+ p ) / ( math.factorial (nPar) * math.factorial (p))
 m = 3 # multiplicative factor
 Ns = m * Np # number of samples
