@@ -26,7 +26,25 @@ from modelTT import TTCellModel
 import math
 
 
+def calcula_loo(y, poly_exp, samples):
+    nsamp = samples.shape[0]
+    
+    deltas = np.empty(nsamp)
+    samps = samples.T
 
+    for i in range(nsamp):
+        indices = np.linspace(0,nsamp-1,nsamp, dtype=int)
+        indices = np.delete(indices,i)
+        subs_samples = samps[indices, :].copy()
+        subs_y =[ y[i] for i in (indices)]
+
+        subs_poly = cp.fit_regression(poly_exp, subs_samples.T, subs_y)
+        yhat = cp.call(subs_poly, samps[i,:])
+        deltas[i] = np.mean(abs(y[i] - yhat))
+
+    y_std = np.std(y)
+    acc = 1.0 - np.mean(deltas)/np.mean(y_std)
+    return acc
 
 labels={"gK1","gKs","gKr","gNa","gbna","gCal","gbca","gto"}
 
@@ -77,10 +95,12 @@ print(samples.shape)
 sols=[TTCellModel(sample).run() for sample in samples.T]
 evals=[sol[:,1] for sol in sols]
 
-poly_exp = cp . orth_ttr (p , dist)
+poly_exp = cp.orth_ttr (p,dist)
 
-surr_model = cp.fit_regression ( poly_exp , samples , evals)
+surr_model = cp.fit_regression (poly_exp,samples,evals)
 
+print("LOO=")
+print(calcula_loo(evals,poly_exp,samples))
 mean = cp.E ( surr_model , dist )
 std = cp.Std ( surr_model , dist )
 sm = cp.Sens_m ( surr_model , dist)
