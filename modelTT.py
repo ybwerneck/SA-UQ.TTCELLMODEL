@@ -30,12 +30,21 @@ class TTCellModel:
     def parametize(self,ps):
         params={}
         i=0;
+      
+        if(np.isscalar(ps) and ps!='' ):
+            params[TTCellModel.parametersN[0]]=ps
+            return params
+        
         for val  in (TTCellModel.parametersN):
-            try:
-                params[val]=ps[i]
-                i+=1
-            except:
-                params[val]=-100
+               try:
+                    if(ps!=''):
+                        params[val]=ps[i]
+                    else:
+                        params[val]=-100
+               except:
+                    params[val]=-100
+               
+               i=i+1
         return params;
     
     def __init__(self,params):
@@ -43,7 +52,7 @@ class TTCellModel:
     
     @staticmethod
     def getSimSize(): #Returns size of result vector for given simulation size parameters, usefull for knowing beforehand the number of datapoints to compare
-        n=TTCellModel("").run().shape
+        n=TTCellModel("").run()["Wf"].shape
         return n
     
     @staticmethod
@@ -52,10 +61,10 @@ class TTCellModel:
         TTCellModel.tf=tf
         TTCellModel.dt=dt
         TTCellModel.dtS=dtS
-        return TTCellModel.getSimSize()
+        return (400, 2)
     @staticmethod   #runs the model once for the given size parameters and returns the time points at wich there is evalution
     def getEvalPoints():
-        n=TTCellModel("").run()
+        n=TTCellModel("").run()["Wf"]
         tss= np.zeros(n.shape[0])
         for i,timepoint in enumerate(n[:,0]):
             tss[i]=float(timepoint[0]);
@@ -63,8 +72,8 @@ class TTCellModel:
         return tss
     
     
-        
-    def ads(self,sol,repoCofs): ##calculo da velocidade de repolarização
+    @staticmethod      
+    def ads(sol,repoCofs): ##calculo da velocidade de repolarização
         k=0
         i=0;
         out={}
@@ -80,11 +89,11 @@ class TTCellModel:
                 index+=1  
                 if(value==x.max()):
                         flag=1                
-                        out[len(repoCofs)]=index +TTCellModel.ti 
+                        out[len(repoCofs)]=index  + TTCellModel.ti
                 if(flag==1):
                         k+=1
                 if(flag==1 and repoCofs[i]*x.min() >= value):
-                        out[i]=k 
+                        out[i]=k  
                         i+=1
                 if(i>=len(repoCofs)):
                         break
@@ -103,31 +112,32 @@ class TTCellModel:
         matrix={}
         try:
             string = output.stdout.read().decode("utf-8")
-            #print(string)
             matrix = np.matrix(string)
-            return matrix
+            
         
         except:
             print(args)
             print(string)
             print(params)
             print("\n")
-            
-        return matrix
-    
-    def plot_sir(self, r, labels):
+        
+      
+       
+        try: 
+            ads=TTCellModel.ads(matrix[:-1,1],[0.5,0.9])
+         
+            return {"Wf": matrix[:-1],"dVmax":matrix[-1,1],"ADP90":ads[1],"ADP50":ads[0],"Vrepos":matrix[-2,1]}
+        except:
+           
+           return {"Wf":0,"dVmax":0,"ADP90":0,"ADP50":0,"Vrepos":0}
+       
+    def plot_sir(r, labels):
         
         x=(r[:,0])
         y=(r[:,1])
         plt.plot(x, y,label=labels[0])
-        ads=self.ads(y,[0.5,0.75,0.9])
-        try:
-            plt.axvline(x=ads[3], label='Depolarization')
-            plt.axvline(x=ads[0]+ads[3], label='APD90')
-            plt.axvline(x=ads[1]+ads[3], label='APD50')
-            plt.axvline(x=ads[2]+ads[3], label='APD75')
-        except:
-            print("no repo")
+
+   
             
         plt.xlabel("tempo")
         plt.ylabel("Variação no potencial")

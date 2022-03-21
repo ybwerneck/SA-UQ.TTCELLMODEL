@@ -23,6 +23,8 @@ from SALib.analyze import sobol
 import timeit
 from modelTT import TTCellModel
 
+TTCellModel.setParametersOfInterest(["gK1","gKs","gKr","gto","gNa","gCal"])
+
 #Variaveis de Interesse
 gK1=  5.4050e+00
 gKs= 0.245
@@ -35,8 +37,8 @@ gto =  2.940e-01
 
 
 #Simulation size parameters
-ti=1000
-tf=1500
+ti=10000
+tf=10500
 dt=0.01
 dtSave=1
 size=TTCellModel.setSizeParameters(ti, tf, dt,dtSave)[0]
@@ -46,9 +48,9 @@ start = timeit.default_timer()
 print("COMEÇANDO SOBOL")
 nsamples=100
 problem = {
-    "num_vars": 8,
-    "names": [ "gK1", "gKs","gKr","gNa","gbna","gCal","gbca","gto"],
-    "bounds": [ [gK1*0.9,gK1*1.1], [gKs*0.9,gKs*1.1], [gKr*0.9,gKr*1.1],[gNa*0.9,gNa*1.1],[gbna*0.9,gbna*1.1],[gCal*0.9,gCal*1.1],[gbca*0.9,gbca*1.1],[gto*0.9,gto*1.1]]
+    "num_vars": 6,
+    "names": [ "gK1","gKs","gKr","gto","gNa","gCal"],
+    "bounds": [ [gK1*0.9,gK1*1.1], [gKs*0.9,gKs*1.1], [gKr*0.9,gKr*1.1],[gto*0.9,gto*1.1],[gNa*0.9,gNa*1.1],[gCal*0.9,gCal*1.1]],
 }
 param_vals = saltelli.sample(problem,nsamples,  calc_second_order=True)
 Ns = param_vals.shape[0]
@@ -57,33 +59,26 @@ print("N=")
 print(Ns)
 ad90s=np.empty([Ns])
 ad50s=np.empty([Ns])
-dpols=np.empty([Ns])
+dVMaxs=np.empty([Ns])
+vrest=np.empty([Ns])
 for i in range(Ns):
      # resolve o problema SIR
     model=TTCellModel(param_vals[i]);
     r=model.run()
-    sol = r[:,1]
+    sol = r["Wf"][:,1]
     Y[i] = sol[size-1]
     if(i%20==0):
         print(i/Ns)
-        model.plot_sir(r,['W'])
     try:
-        adps=model.ads(sol,[0.5,0.9])
-        ad90s[i]=adps[0]
-        ad50s[i]=adps[1]
-        dpols[i]=adps[2] 
+        ad90s[i]=r["ADP90"]
+        ad50s[i]=r["ADP50"]
+        dVMaxs[i]=r["dVmax"]
+        vrest[i]=r["Vrepos"]
     except:
         ad90s[i]=0
         ad50s[i]=0
-        dpols[i]=0
 
-# F(X)=Y
-sensitivity = sobol.analyze(problem, Y, calc_second_order=True)
-print("Indice de Sobol princial or de primeira ordem relacionado a F(x)=Y")
-print(sensitivity['S1'])
-print("Indice de Sobol total ou de alta ordem")
-print(sensitivity['ST'])
-print()
+
 
 # ADPS E VEL DE DEPOLARIZAÇÃO
 # ADP50
@@ -102,15 +97,24 @@ print("Indice de de alta ordem")
 print(sensitivity['ST'])
 print()
 
-# DEPOSVEL
-sensitivity = sobol.analyze(problem,dpols , calc_second_order=True)
-print("Indice de Sobol princial or de primeira ordem relacionado a velocidade de depolarização")
+# dvmax
+sensitivity = sobol.analyze(problem, dVMaxs, calc_second_order=True)
+print("Indice de Sobol princial or de primeira ordem relacionado a dvMax")
 print(sensitivity['S1'])
-print("Indice de Sobol de alta ordem")
+print("Indice de Sobol total ou de alta ordem")
 print(sensitivity['ST'])
 print()
 
 
+# vrest
+sensitivity = sobol.analyze(problem, vrest , calc_second_order=True)
+print("Indice de Sobol princial or de primeira ordem relacionado a Vrest")
+print(sensitivity['S1'])
+print("Indice de Sobol total ou de alta ordem")
+print(sensitivity['ST'])
+print()
+
 stop = timeit.default_timer()
 print('Time ALL RUN: ', stop - start) 
+
 
