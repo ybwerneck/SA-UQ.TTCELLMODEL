@@ -143,16 +143,6 @@ surr_modelVrest = cp.fit_regression (poly_exp,samples,vrest)
 
 
 
-#print(calcula_loo(evals,poly_exp,samples))
-
-
-#mean = cp.E ( surr_model , dist )
-#std = cp.Std ( surr_model , dist )
-#sm = cp.Sens_m ( surr_model , dist)
-#st = cp.Sens_t ( surr_model , dist )
-
-
-
 start = timeit.default_timer()
 
 
@@ -160,32 +150,10 @@ start = timeit.default_timer()
 
 print("SOBOL + LOO ERRO CALC")
 
-#print("FX")
-#stf=np.array(sensitivity['STf'])
-#s1f=np.array(sensitivity['S1f'])3
-#sms=[np.mean(sm.T[0][:,i]) for i,val in enumerate(labels)]
-#sts=[np.mean(st.T[0][:,i]) for i,val in enumerate(labels)]
-#print("S1")
-
-#print("MAX ERR:",(np.max(abs(s1f- sms))))
-#print("MEAN ERR:",np.mean(abs(s1f- sms)))
-
-
-#fig = plt.figure()
-#y_pos = np.arange(len(labels))
-#plt.bar(y_pos,sms)
-#plt.xticks(y_pos, labels)
-#plt.xlabel("SOBOL INDEX FOR WAVEFORM")
-
-plt.show()
-
-
 print("\n")
+
+
 print("AD50")
-
-
-
-
 s1f=np.array(sensitivity['S5'])
 sms=cp.Sens_m (surr_model50,dist)
 
@@ -204,11 +172,9 @@ print("LOOad50 =",calcula_loo(ads50,poly_exp,samples))
 
 
 print("\n")
+
+
 print("AD90")
-
-
-
-
 s1f=np.array(sensitivity['S9'])
 sms=cp.Sens_m (surr_model90,dist)
 
@@ -226,16 +192,12 @@ plt.show()
 
 print("LOO ad90 =",calcula_loo(ads90,poly_exp,samples))
 
-
-
 print("\n")
+
+
 print("dvMax")
-
-
-
 s1f=np.array(sensitivity['SVM'])
 sms=cp.Sens_m (surr_modeldvMax,dist)
-
 print("MAX ERR:",(np.max(abs(s1f- sms))))
 print("MEAN ERR:",np.mean(abs(s1f- sms)))
 
@@ -251,19 +213,13 @@ print("LOO dvmax =",calcula_loo(dvMaxs,poly_exp,samples))
 
 
 print("\n")
+
+
 print("vRest")
-
-
-
-
-
 s1f=np.array(sensitivity['SVR'])
 sms= cp.Sens_m (surr_modelVrest,dist)
-
 print("MAX ERR:",(np.max(abs(s1f- sms))))
 print("MEAN ERR:",np.mean(abs(s1f- sms)))
-
-
 
 
 fig = plt.figure()
