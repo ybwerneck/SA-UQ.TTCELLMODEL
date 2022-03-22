@@ -21,17 +21,17 @@ TTCellModel.setParametersOfInterest(labels)
 ##Simple model use, usefull for
 ti=0
 ti=3000
-tf=3400
+tf=4000
 dt=0.01
 dtS=1
 TTCellModel.setSizeParameters(ti, tf, dt, dtS)
 
 
 try: 
-    sample=[sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6]]
+    sample=[sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6]] #try to get parameters from args
     model=TTCellModel(sample)
 except:
-    model=TTCellModel("")
+    model=TTCellModel("")#use default
 result=model.run()
 
 try:
@@ -43,19 +43,18 @@ except:
     y=0
 
 
-#
-#plt.plot(x, y,label="W",color="r")
 
+plt.plot(x, y,label="W",color="r")
    
-#plt.axvline(x=result["ADP90"], label='ADP90')
-#plt.axvline(x=result["ADP50"], label='ADP50',color='g') 
-#plt.axhline(y=result["Vrepos"], label='Vrepos',color='b')
+plt.axvline(x=result["ADP90"], label='ADP90')
+plt.axvline(x=result["ADP50"], label='ADP50',color='g') 
+plt.axhline(y=result["Vrepos"], label='Vrepos',color='b')
 
-#plt.xlabel("tempo")
-#plt.ylabel("Variação no potencial")
-#plt.legend(loc='best')
-#plt.show()
-#        
+plt.xlabel("tempo")
+plt.ylabel("Variação no potencial")
+plt.legend(loc='best')
+plt.show()
+        
 
 matrix=[0,0,0,0]
 matrix[0]=result["ADP90"]
