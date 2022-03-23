@@ -9,8 +9,6 @@ Created on Sat Dec 11 12:51:32 2021
 import subprocess 
 import sys
 import numpy as np
-import sys
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import mpld3

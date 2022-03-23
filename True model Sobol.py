@@ -46,7 +46,7 @@ size=TTCellModel.setSizeParameters(ti, tf, dt,dtSave)[0]
 #Sobol
 start = timeit.default_timer()
 print("COMEÇANDO SOBOL")
-nsamples=100
+nsamples=200
 problem = {
     "num_vars": 6,
     "names": [ "gK1","gKs","gKr","gto","gNa","gCal"],
