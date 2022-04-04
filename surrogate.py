@@ -62,14 +62,11 @@ def calcula_loo(y, poly_exp, samples):
 
     y_std = np.std(y)
     err = np.mean(deltas)/np.var(y)
-    print("Err:",err)
     acc = 1.0 - np.mean(deltas)/np.var(y)
-    
-    
+      
     stop = timeit.default_timer()
-    print('Time to LOO: ', stop - start) 
 
-    return acc
+    return err
 
 
 #Load validation files
@@ -92,6 +89,16 @@ for i,sample in enumerate(X):       ##must be matrix not list
         samplesVal[i][k]=y
 
 
+##Load Result File
+f = open('resultsN.csv', 'a')
+
+# create the csv writer
+writer = csv.writer(f)
+
+
+row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns']
+writer.writerow(row)
+
 
 
 Y = readF("Yval.txt")
@@ -102,7 +109,7 @@ TTCellModel.setParametersOfInterest(["gK1","gKs","gKr","gto","gNa","gCal"])
 nPar=6
 #size parameteres
 ti=3000
-tf=3500
+tf=4000
 dt=0.01
 dtS=1
 size=TTCellModel.setSizeParameters(ti, tf, dt, dtS)  
@@ -131,10 +138,11 @@ gNad  = cp.Uniform(gNa*low,gNa*high)
 gCald = cp.Uniform(gCal*low,gCal*high)
 dist = cp.J(gK1d,gKsd,gKrd,gtod,gNad,gCald)
 
-p = 3 # polynomial degree
+p = 5 # polynomial degree
 Np = math.factorial ( nPar+ p ) / ( math.factorial (nPar) * math.factorial (p))
-m = 2  # multiplicative factor
+m = 2      # multiplicative factor
 Ns = m * Np # number of samples
+p= 2
 
 print("Samples",Ns) 
 print("Degree",p) 
@@ -175,66 +183,100 @@ start = timeit.default_timer()
 
 
 
-##Load Result File
-f = open('results.csv', 'a')
-
-# create the csv writer
-writer = csv.writer(f)
-
-# write a row to the csv file
-
-#row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns']
-#writer.writerow(row)
-
 
 print("SOBOL + LOO ERRO CALC")
 print("\n")
 
 
-##AD50
-s1f=np.array(sensitivity['S5'])
-sms=cp.Sens_m (surr_model50,dist)
-avgE=np.mean(abs(s1f- sms))
-maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(ads50,poly_exp,samples)
-YPCE=[cp.call(surr_model50,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,0])**2)/np.var(Yval[:,0])
 
-row=['AD50','CPLS',p,nErr,loo,maxE,avgE,Ns]
-writer.writerow(row)
 
 
 
 ##AD90
-s1f=np.array(sensitivity['S5'])
-sms=cp.Sens_m (surr_model50,dist)
+s1f=np.array(sensitivity['S9'])
+sms=cp.Sens_m (surr_model90,dist)
 avgE=np.mean(abs(s1f- sms))
 maxE=np.max(abs(s1f- sms))
 loo=calcula_loo(ads90,poly_exp,samples)
-YPCE=[cp.call(surr_model50,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,1])**2)/np.var(Yval[:,1])
+YPCE=[cp.call(surr_model90,x) for x in X]
+nErr=np.mean((YPCE-Yval[:,0])**2)/np.var(Yval[:,0])
+
+
+
+
+fig, axs = plt.subplots(2, 2)
+
+
+
+plt=axs[0,0]
+plt.set_title('ADP90')
+Ytrue=Yval[:,0]
+plt.scatter(Ytrue,YPCE)
+plt.plot(Ytrue,Ytrue,"black",linewidth=2)
+plt.plot()
+plt.set(xlabel="Y_true",ylabel="Y_pred")
+
+
+
+
 
 row=['AD90','CPLS',p,nErr,loo,maxE,avgE,Ns]
 writer.writerow(row)
 
-##AD50
+
+ ##AD50
 s1f=np.array(sensitivity['S5'])
 sms=cp.Sens_m (surr_model50,dist)
 avgE=np.mean(abs(s1f- sms))
 maxE=np.max(abs(s1f- sms))
 loo=calcula_loo(ads50,poly_exp,samples)
+YPCE=[cp.call(surr_model50,x) for x in X]
+nErr=np.mean((YPCE-Yval[:,1])**2)/np.var(Yval[:,1])
+
+
+plt=axs[0,1]
+plt.set_title('ADP50')
+Ytrue=Yval[:,1]
+plt.scatter(Ytrue,YPCE)
+plt.plot(Ytrue,Ytrue,"black",linewidth=2)
+plt.plot()
+plt.set(xlabel="Y_true",ylabel="Y_pred")
+
+
+
+# row=['AD50','CPLS',p,nErr,loo,maxE,avgE,Ns]
+# writer.writerow(row)
+
+
+##Dvmaxw
+s1f=np.array(sensitivity['SVM'])
+sms=cp.Sens_m (surr_modeldvMax,dist)
+avgE=np.mean(abs(s1f- sms))
+maxE=np.max(abs(s1f- sms))
+loo=calcula_loo(dvMaxs,poly_exp,samples)
 YPCE=[cp.call(surr_modeldvMax,x) for x in X]
 nErr=np.mean((YPCE-Yval[:,2])**2)/np.var(Yval[:,2])
 
 row=['Vrest','CPLS',p,nErr,loo,maxE,avgE,Ns]
 writer.writerow(row)
 
-##AD50
-s1f=np.array(sensitivity['S5'])
-sms=cp.Sens_m (surr_model50,dist)
+
+plt=axs[1,0]
+plt.set_title('dVmax')
+Ytrue=Yval[:,2]
+plt.scatter(Ytrue,YPCE)
+plt.plot(Ytrue,Ytrue,"black",linewidth=2)
+plt.plot()
+plt.set(xlabel="Y_true",ylabel="Y_pred")
+
+
+
+# ##Vrest
+s1f=np.array(sensitivity['SVR'])
+sms=cp.Sens_m (surr_modelVrest,dist)
 avgE=np.mean(abs(s1f- sms))
 maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(ads50,poly_exp,samples)
+loo=calcula_loo(vrest,poly_exp,samples)
 YPCE=[cp.call(surr_modelVrest,x) for x in X]
 nErr=np.mean((YPCE-Yval[:,3])**2)/np.var(Yval[:,3])
 
@@ -243,17 +285,22 @@ writer.writerow(row)
 
 
 
+plt=axs[1,1]
+plt.set_title('Vrest')
+
+Ytrue=Yval[:,3]
+plt.scatter(Ytrue,YPCE)
+plt.plot(Ytrue,Ytrue,"black",linewidth=2)
+plt.plot()
+plt.set(xlabel="Y_true",ylabel="Y_pred")
+
+
+
 
 stop = timeit.default_timer()
 
-
-print("\n")
-print('Time to run Sobol: + LOO ', stop - start) 
-
-
-
-
-
+for ax in axs.flatten():
+    ax.label_outer()
 
 
 
