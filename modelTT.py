@@ -85,15 +85,17 @@ class TTCellModel:
             except:
                 x=sol
             index=0
+            idxmax=0
             for value in x:
                 index+=1  
                 if(value==x.max()):
                         flag=1                
                         out[len(repoCofs)]=index  + TTCellModel.ti
+                        idxmax=index
                 if(flag==1):
                         k+=1
                 if(flag==1 and repoCofs[i]*x.min() >= value):
-                        out[i]=k  
+                        out[i]= (k)
                         i+=1
                 if(i>=len(repoCofs)):
                         break

@@ -96,7 +96,7 @@ if __name__ == "__main__":
     Na = int(factorial(nPar+p)/(factorial(nPar)*factorial(p)))
     ns = (Na*m)
     weights = cp.generate_quadrature(1, dist, rule=("gaussian"))
-    indices = np.random.choice(samples.shape[0], ns, replace=True)
+    indices = np.random.choice(samples.shape[0], ns, replace=True) ##repeat samples if requeried number is greater than dataset
 
 
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     print("Samples taken for fitting:",ns)
 
- #print(new_samples)
+     #print(new_samples)
     #print(new_Y)
         
     poly_exp = cp.generate_expansion(p, dist,rule="three_terms_recurrence")

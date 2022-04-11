@@ -24,8 +24,24 @@ from SALib.analyze import sobol
 import timeit
 from modelTT import TTCellModel
 import math
-
+from sklearn import linear_model as lm
 import csv
+
+
+def Sobol():
+    problem = {
+    "num_vars": 6,
+    "names": labels,
+    "bounds": [ [gK1*0.9,gK1*1.1], [gKs*0.9,gKs*1.1], [gKr*0.9,gKr*1.1],[gto*0.9,gto*1.1],[gNa*0.9,gNa*1.1],[gCal*0.9,gCal*1.1]],
+}
+    Nsobol=1000
+    param_vals = saltelli.sample(problem,Nsobol,  calc_second_order=False)
+    Ns = param_vals.shape[0]
+    Y=np.empty([Ns])
+    for i in range(Ns):
+        Y[i]=cp.call(fitted_polynomial,param_vals[i])  
+    sensitivity = sobol.analyze(problem,Y , calc_second_order=False)
+    return sensitivity['S1']
 
 def readF(fn):
     X=[]
@@ -36,7 +52,7 @@ def readF(fn):
 
 
 
-def calcula_loo(y, poly_exp, samples):
+def calcula_loo(y, poly_exp, samples,model):
     """ 
     LOO for a scalar quantity: y 
     """
@@ -45,7 +61,7 @@ def calcula_loo(y, poly_exp, samples):
     #print(nsamp)
     #print(y)
 
-    deltas = np.empty(nsamp)
+    deltas = np.zeros(nsamp)
     samps = samples.T
 
     start = timeit.default_timer()
@@ -56,20 +72,22 @@ def calcula_loo(y, poly_exp, samples):
         subs_samples = samps[indices,:].copy()
         subs_y =[ y[i] for i in (indices)]
 
-        subs_poly = cp.fit_regression(poly_exp, subs_samples.T, subs_y)
+        subs_poly = cp.fit_regression (poly_exp,subs_samples.T,subs_y,model=model,retall=False) 
         yhat = cp.call(subs_poly, samps[i,:])
         deltas[i] = ((y[i] - yhat))**2
 
     y_std = np.std(y)
     err = np.mean(deltas)/np.var(y)
     acc = 1.0 - np.mean(deltas)/np.var(y)
-      
+    
+    
     stop = timeit.default_timer()
 
     return err
 
 
 #Load validation files
+
 ##Reference Value for Sobol Indexes Error calculation
 sensitivity={}
 sensitivity['S5']=[1.55538786e-02, 1.82850519e-01, 9.61438769e-02, 2.99173145e-03,
@@ -90,19 +108,29 @@ for i,sample in enumerate(X):       ##must be matrix not list
 
 
 ##Load Result File
-f = open('resultsN.csv', 'a')
+f = open('resultstrial.csv', 'w',newline='')
 
 # create the csv writer
 writer = csv.writer(f)
-
-
 row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns']
 writer.writerow(row)
 
 
 
 Y = readF("Yval.txt")
-Yval = np.array(Y)
+Y= np.array(Y)
+
+Yval={
+      
+     "ADP90":Y[:,0],
+     "ADP50":Y[:,1],
+     "dVmax":Y[:,2],
+     "Vrest":Y[:,3],
+ 
+     
+     }
+
+
 #Simulation Parameters
 labels=["gK1","gKs","gKr","gto","gNa","gCal"]
 TTCellModel.setParametersOfInterest(["gK1","gKs","gKr","gto","gNa","gCal"])
@@ -138,177 +166,145 @@ gNad  = cp.Uniform(gNa*low,gNa*high)
 gCald = cp.Uniform(gCal*low,gCal*high)
 dist = cp.J(gK1d,gKsd,gKrd,gtod,gNad,gCald)
 
-p = 5 # polynomial degree
+p = 2 # polynomial degree
 Np = math.factorial ( nPar+ p ) / ( math.factorial (nPar) * math.factorial (p))
-m = 2      # multiplicative factor
-Ns = m * Np # number of samples
-p= 2
+m = 6      # multiplicative factor
+Ns = 500#m * Np # number of samples
+
+pmin,pmax=2,6
 
 print("Samples",Ns) 
 print("Degree",p) 
 
 #Sample the parameter distribution
 samples = dist.sample(Ns,rule="latin_hypercube", seed=1234)
-print(samples.shape)
+
 
 
 
 #Run model for true response
 start = timeit.default_timer()
 sols=[TTCellModel(sample).run() for sample in samples.T]
+ads50=[sol["ADP50"] for sol in sols]
+ads90=[sol["ADP90"] for sol in sols]
+dVmaxs=[sol["dVmax"] for sol in sols]
+vrest=[sol["Vrepos"] for sol in sols]
+
+
+qoi={
+      "ADP50":ads50,
+     # "ADP90":ads90,
+     # "Vrest":vrest,
+     #"dVmax":dVmaxs,
+     
+     }
+
 stop = timeit.default_timer()
 
 
 print('Time to run model: ', stop - start) 
 
-#Build PCE and fit coefficients
-poly_exp = cp.orth_ttr (p,dist)
-ads50=[sol["ADP50"] for sol in sols]
-ads90=[sol["ADP90"] for sol in sols]
-dvMaxs=[sol["dVmax"] for sol in sols]
-vrest=[sol["Vrepos"] for sol in sols]
-surr_model50 = cp.fit_regression (poly_exp,samples,ads50)
-surr_model90 = cp.fit_regression (poly_exp,samples,ads90)
-surr_modeldvMax = cp.fit_regression (poly_exp,samples,dvMaxs)
-surr_modelVrest = cp.fit_regression (poly_exp,samples,vrest)
-
-
-
-
-
-start = timeit.default_timer()
-
-#Calculate LOO, Sobol Error and Validation Error for each QOI
-
-
-
-
-
-print("SOBOL + LOO ERRO CALC")
-print("\n")
 
 
 
 
 
 
-##AD90
-s1f=np.array(sensitivity['S9'])
-sms=cp.Sens_m (surr_model90,dist)
-avgE=np.mean(abs(s1f- sms))
-maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(ads90,poly_exp,samples)
-YPCE=[cp.call(surr_model90,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,0])**2)/np.var(Yval[:,0])
+kws = {"fit_intercept": False}
+models = {
+
+    
+
+    "lars": lm.Lars(normalize=False,**kws,eps=0.75,precompute=False),
+    "least squares": lm.LinearRegression(**kws),
+     "lasso lars": lm.LassoLars(alpha=0.1, **kws),
+     "ridge": lm.Ridge(alpha=0.1, **kws),
+     "bayesian ridge": lm.BayesianRidge(**kws),
+
+  
+
+
+  
+}
 
 
 
+        # pols=[]
+        # for P in list(range(pmin,pmax+1,1)):  
+        #     poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
+        #     fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)     
+        #     loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
+        #     print("{:e}".format(loos[P-pmin]),"\n")
+        #     pols.append(fitted_polynomial)
+        
+        
+        
 
-fig, axs = plt.subplots(2, 2)
-
-
-
-plt=axs[0,0]
-plt.set_title('ADP90')
-Ytrue=Yval[:,0]
-plt.scatter(Ytrue,YPCE)
-plt.plot(Ytrue,Ytrue,"black",linewidth=2)
-plt.plot()
-plt.set(xlabel="Y_true",ylabel="Y_pred")
-
-
-
-
-
-row=['AD90','CPLS',p,nErr,loo,maxE,avgE,Ns]
-writer.writerow(row)
+for label, model in models.items():
+    
+    print("Beggining ", label)
 
 
- ##AD50
-s1f=np.array(sensitivity['S5'])
-sms=cp.Sens_m (surr_model50,dist)
-avgE=np.mean(abs(s1f- sms))
-maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(ads50,poly_exp,samples)
-YPCE=[cp.call(surr_model50,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,1])**2)/np.var(Yval[:,1])
+##Adpative algorithm chooses best fit in deegree range
+  
+    
+    for qlabel,dataset in qoi.items():
+        
+        
+        loos= np.zeros((pmax-pmin+1))
+        pols=[]
+        for P in list(range(pmin,pmax+1,1)):  
+            poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
+            fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)     
+            loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
+            print("{:e}".format(loos[P-pmin]),"\n")
+            pols.append(fitted_polynomial)
+        
+        
+        
+        #Choose best fitted poly exp in degree range
+        degreeIdx=loos.argmin()
+        loo=loos[degreeIdx]
+        fitted_polynomial=pols[degreeIdx]
+        
+        loos
+        ##Calculate Sobol Error
+        #s1f=np.array(sensitivity['S9'])
+        #sms=Sobol()
+        avgE=0#np.mean(abs(s1f- sms))
+        maxE=0#np.max(abs(s1f- sms))
+        
+        #Caluclate Validation Error
+        YPCE=[cp.call(fitted_polynomial,sample) for sample in X]
+        nErr=np.mean((YPCE-Yval[qlabel])**2)/np.var(Yval[qlabel])
+        
+        
+        row=[qlabel,label,degreeIdx+pmin,nErr,loo,maxE,avgE,Ns]
+        writer.writerow(row)
+        
+    # Y=l.predict(X)
+    # d=Yval["ADP90"]-Y
+    # np.mean(d**2)/np.var(Yval["ADP90"])
 
-
-plt=axs[0,1]
-plt.set_title('ADP50')
-Ytrue=Yval[:,1]
-plt.scatter(Ytrue,YPCE)
-plt.plot(Ytrue,Ytrue,"black",linewidth=2)
-plt.plot()
-plt.set(xlabel="Y_true",ylabel="Y_pred")
-
-
-
-# row=['AD50','CPLS',p,nErr,loo,maxE,avgE,Ns]
-# writer.writerow(row)
-
-
-##Dvmaxw
-s1f=np.array(sensitivity['SVM'])
-sms=cp.Sens_m (surr_modeldvMax,dist)
-avgE=np.mean(abs(s1f- sms))
-maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(dvMaxs,poly_exp,samples)
-YPCE=[cp.call(surr_modeldvMax,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,2])**2)/np.var(Yval[:,2])
-
-row=['Vrest','CPLS',p,nErr,loo,maxE,avgE,Ns]
-writer.writerow(row)
-
-
-plt=axs[1,0]
-plt.set_title('dVmax')
-Ytrue=Yval[:,2]
-plt.scatter(Ytrue,YPCE)
-plt.plot(Ytrue,Ytrue,"black",linewidth=2)
-plt.plot()
-plt.set(xlabel="Y_true",ylabel="Y_pred")
-
-
-
-# ##Vrest
-s1f=np.array(sensitivity['SVR'])
-sms=cp.Sens_m (surr_modelVrest,dist)
-avgE=np.mean(abs(s1f- sms))
-maxE=np.max(abs(s1f- sms))
-loo=calcula_loo(vrest,poly_exp,samples)
-YPCE=[cp.call(surr_modelVrest,x) for x in X]
-nErr=np.mean((YPCE-Yval[:,3])**2)/np.var(Yval[:,3])
-
-row=['dVmax','CPLS',p,nErr,loo,maxE,avgE,Ns]
-writer.writerow(row)
-
-
-
-plt=axs[1,1]
-plt.set_title('Vrest')
-
-Ytrue=Yval[:,3]
-plt.scatter(Ytrue,YPCE)
-plt.plot(Ytrue,Ytrue,"black",linewidth=2)
-plt.plot()
-plt.set(xlabel="Y_true",ylabel="Y_pred")
-
-
-
-
-stop = timeit.default_timer()
-
-for ax in axs.flatten():
-    ax.label_outer()
-
-
-
+    
+    # # fig, axs = plt.subplots(2, 2)
+    # # plt=axs[0,0]
+    # # plt.set_title('ADP90')
+    # # Ytrue=Yval[:,0]
+    # # plt.scatter(Ytrue,YPCE)
+    # # plt.plot(Ytrue,Ytrue,"black",linewidth=2)
+    # # plt.plot()
+    # # plt.set(xlabel="Y_true",ylabel="Y_pred")
+    
+   
+    
+    
+    
 # close the file
 f.close()
-
-
-
-
-
-
+    
+    
+    
+    
+    
+    
