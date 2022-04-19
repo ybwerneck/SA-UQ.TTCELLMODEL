@@ -108,15 +108,14 @@ for i,sample in enumerate(X):       ##must be matrix not list
 
 
 ##Load Result File
-f = open('resultstrial.csv', 'w',newline='')
+f = open('resultsLARS.csv', 'w',newline='')
+
 
 # create the csv writer
 writer = csv.writer(f)
+
 row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns']
 writer.writerow(row)
-
-
-
 Y = readF("Yval.txt")
 Y= np.array(Y)
 
@@ -174,7 +173,7 @@ Ns = 500#m * Np # number of samples
 pmin,pmax=2,6
 
 print("Samples",Ns) 
-print("Degree",p) 
+ 
 
 #Sample the parameter distribution
 samples = dist.sample(Ns,rule="latin_hypercube", seed=1234)
@@ -192,17 +191,14 @@ vrest=[sol["Vrepos"] for sol in sols]
 
 
 qoi={
-      "ADP50":ads50,
-     # "ADP90":ads90,
-     # "Vrest":vrest,
-     #"dVmax":dVmaxs,
+     "ADP50":ads50,
+     #"ADP90":ads90,
+     #"Vrest":vrest,
+     "dVmax":dVmaxs,
      
      }
 
-stop = timeit.default_timer()
 
-
-print('Time to run model: ', stop - start) 
 
 
 
@@ -214,13 +210,16 @@ kws = {"fit_intercept": False}
 models = {
 
     
+    #"Chaos py default":None,
+    "larsE-1": lm.Lars(normalize=False,**kws,eps=0.75,precompute=False), #COEF = 7.5e-1
+    "larsE-2": lm.Lars(normalize=False,**kws,eps=0.075,precompute=False),
+    "larsE-3": lm.Lars(normalize=False,**kws,eps=0.0075,precompute=False),
+    "larsE-4": lm.Lars(normalize=False,**kws,eps=0.00075,precompute=False),
+    "larsE-5": lm.Lars(normalize=False,**kws,eps=0.000075,precompute=False),
 
-    "lars": lm.Lars(normalize=False,**kws,eps=0.75,precompute=False),
-    "least squares": lm.LinearRegression(**kws),
-     "lasso lars": lm.LassoLars(alpha=0.1, **kws),
-     "ridge": lm.Ridge(alpha=0.1, **kws),
-     "bayesian ridge": lm.BayesianRidge(**kws),
 
+
+ 
   
 
 
@@ -254,12 +253,16 @@ for label, model in models.items():
         loos= np.zeros((pmax-pmin+1))
         pols=[]
         for P in list(range(pmin,pmax+1,1)):  
+            
+
+            start = timeit.default_timer()
             poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
             fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)     
             loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
-            print("{:e}".format(loos[P-pmin]),"\n")
+            print('D=',P,"loo =","{:e}".format(loos[P-pmin]),"\n")
             pols.append(fitted_polynomial)
-        
+            stop = timeit.default_timer()
+            print('Time to generate exp and loo: ', stop - start) 
         
         
         #Choose best fitted poly exp in degree range
@@ -267,7 +270,7 @@ for label, model in models.items():
         loo=loos[degreeIdx]
         fitted_polynomial=pols[degreeIdx]
         
-        loos
+        
         ##Calculate Sobol Error
         #s1f=np.array(sensitivity['S9'])
         #sms=Sobol()

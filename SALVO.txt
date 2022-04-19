@@ -1,0 +1,90 @@
+Beggining  larsE-1
+D= 2 loo = 9.552772e-01 
+
+Time to generate exp and loo:  10.037737399999969
+D= 3 loo = 9.581400e-01 
+
+Time to generate exp and loo:  23.538952900000368
+D= 4 loo = 9.645405e-01 
+
+Time to generate exp and loo:  71.74866760000077
+D= 5 loo = 9.744194e-01 
+
+Time to generate exp and loo:  482.1538892999997
+D= 6 loo = 9.850664e-01 
+
+Time to generate exp and loo:  1914.0827627999997
+D= 2 loo = 3.909855e-04 
+
+Time to generate exp and loo:  8.829251999999542
+D= 3 loo = 3.485784e-04 
+
+Time to generate exp and loo:  17.537793400000737
+D= 4 loo = 3.327554e-04 
+
+Time to generate exp and loo:  51.69399709999925
+D= 5 loo = 1.295058e-04 
+
+Time to generate exp and loo:  493.6298256000009
+D= 6 loo = 1.277551e-04 
+
+Time to generate exp and loo:  1970.7152256999998
+Beggining  larsE-2
+D= 2 loo = 7.380851e-01 
+
+Time to generate exp and loo:  12.15558670000064
+D= 3 loo = 7.542923e-01 
+
+Time to generate exp and loo:  30.91208899999947
+D= 4 loo = 7.717623e-01 
+
+Time to generate exp and loo:  99.73533420000058
+D= 5 loo = 7.955883e-01 
+
+Time to generate exp and loo:  611.1400971000003
+D= 6 loo = 8.253316e-01 
+
+Time to generate exp and loo:  2347.093664400001
+D= 2 loo = 3.966048e-04 
+
+Time to generate exp and loo:  10.462817199999336
+D= 3 loo = 3.533619e-04 
+
+Time to generate exp and loo:  24.199376200000188
+D= 4 loo = 3.397895e-04 
+
+Time to generate exp and loo:  68.49690519999967
+D= 5 loo = 1.380333e-04 
+
+Time to generate exp and loo:  552.7916322000001
+D= 6 loo = 1.363156e-04 
+
+Time to generate exp and loo:  2086.484718300002
+Beggining  larsE-3
+D= 2 loo = 7.413959e-01 
+
+Time to generate exp and loo:  11.27915209999992
+D= 3 loo = 7.620572e-01 
+
+Time to generate exp and loo:  31.22602890000053
+D= 4 loo = 7.903063e-01 
+
+Time to generate exp and loo:  89.93406289999984
+D= 5 loo = 8.507753e-01 
+
+Time to generate exp and loo:  663.4648677000005
+D= 6 loo = 9.248163e-01 
+
+Time to generate exp and loo:  2399.4066533999976
+D= 2 loo = 3.968012e-04 
+
+Time to generate exp and loo:  9.491740100002062
+D= 3 loo = 3.573365e-04 
+
+Time to generate exp and loo:  23.673175300002185
+D= 4 loo = 3.446746e-04 
+
+Time to generate exp and loo:  59.52504599999884
+D= 5 loo = 1.390719e-04 
+
+Time to generate exp and loo:  574.5508752999995
