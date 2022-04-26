@@ -26,7 +26,8 @@ from modelTT import TTCellModel
 import math
 from sklearn import linear_model as lm
 import csv
-
+import ray
+import copy
 
 def Sobol():
     problem = {
@@ -51,27 +52,79 @@ def readF(fn):
     return X
 
 
+ray.init(ignore_reinit_error=True,num_cpus=6,log_to_driver=False)      
+@ray.remote
+def runModel(sample,i):
+
+    TTCellModel.setParametersOfInterest(["gK1","gKs","gKr","gto","gNa","gCal"])
+
+    R= TTCellModel(sample).run()
+    return R
+   
+def runModelParallel(samples):
+      treads={};
+      nsamp = np.shape(samples)[1]
+      Y={}
+   
+      for i in range(nsamp):
+          treads[i]=runModel.remote(samples.T[i],i)
+      for i in range(nsamp): 
+          Y[i]=ray.get(treads[i])
+      return Y
+      
+@ray.remote
+def looT(samps,y,idx,deltas,base,model):
+    
+    
+     nsamp = np.shape(y)[0]
+     indices = np.linspace(0,nsamp-1,nsamp, dtype=np.int32)
+     indices = np.delete(indices,idx)
+     subs_samples = samps[indices,:].copy()
+     subs_y =[ y[i] for i in (indices)]
+
+     subs_poly = cp.fit_regression (base,subs_samples.T,subs_y,model=model,retall=False) 
+     
+     yhat = cp.call(subs_poly, samps[idx,:])
+     del(subs_y)
+     del subs_samples
+     del indices
+     return ((y[idx] - yhat))**2
+     
+
+
 
 def calcula_loo(y, poly_exp, samples,model):
-    """ 
-    LOO for a scalar quantity: y 
-    """
-    #print ("\n\nPerforming Leave One Out cross validation.")    
-    nsamp = np.shape(y)[0]
-    #print(nsamp)
-    #print(y)
 
-    deltas = np.zeros(nsamp)
+    
+    #PARALALLE LOO CALC
+    nsamp = np.shape(y)[0]     
+    treads={};
+    deltas = np.zeros(nsamp)  
     samps = samples.T
 
-    start = timeit.default_timer()
+    for i in range(nsamp):
+       treads[i]= looT.remote(samps,y,i,deltas,copy.copy(poly_exp),model)
+    for i in range(nsamp): 
+        deltas[i]=ray.get(treads[i])
+        
+    y_std = np.std(y)
+    err = np.mean(deltas)/np.var(y)
+    acc = 1.0 - np.mean(deltas)/np.var(y)
+    
+    return err
 
+def calcula_looSingle(y, poly_exp, samples,model):
+    
+    
+    #SERIAL LOO CALC
+    nsamp = np.shape(y)[0]
+    deltas = np.zeros(nsamp)
+    samps = samples.T
     for i in range(nsamp):
         indices = np.linspace(0,nsamp-1,nsamp, dtype=np.int32)
         indices = np.delete(indices,i)
         subs_samples = samps[indices,:].copy()
         subs_y =[ y[i] for i in (indices)]
-
         subs_poly = cp.fit_regression (poly_exp,subs_samples.T,subs_y,model=model,retall=False) 
         yhat = cp.call(subs_poly, samps[i,:])
         deltas[i] = ((y[i] - yhat))**2
@@ -81,10 +134,8 @@ def calcula_loo(y, poly_exp, samples,model):
     acc = 1.0 - np.mean(deltas)/np.var(y)
     
     
-    stop = timeit.default_timer()
 
     return err
-
 
 #Load validation files
 
@@ -108,14 +159,14 @@ for i,sample in enumerate(X):       ##must be matrix not list
 
 
 ##Load Result File
-f = open('resultsLARS.csv', 'w',newline='')
+f = open('resultsF.csv', 'a',newline='')
 
 
 # create the csv writer
 writer = csv.writer(f)
 
-row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns']
-writer.writerow(row)
+row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns','Timeselected','Timemax']
+#writer.writerow(row)
 Y = readF("Yval.txt")
 Y= np.array(Y)
 
@@ -170,7 +221,7 @@ Np = math.factorial ( nPar+ p ) / ( math.factorial (nPar) * math.factorial (p))
 m = 6      # multiplicative factor
 Ns = 500#m * Np # number of samples
 
-pmin,pmax=2,6
+pmin,pmax=2,5
 
 print("Samples",Ns) 
  
@@ -183,11 +234,11 @@ samples = dist.sample(Ns,rule="latin_hypercube", seed=1234)
 
 #Run model for true response
 start = timeit.default_timer()
-sols=[TTCellModel(sample).run() for sample in samples.T]
-ads50=[sol["ADP50"] for sol in sols]
-ads90=[sol["ADP90"] for sol in sols]
-dVmaxs=[sol["dVmax"] for sol in sols]
-vrest=[sol["Vrepos"] for sol in sols]
+sols=runModelParallel(samples)
+ads50=[sols[i]["ADP50"] for i in range(Ns)]
+ads90=[sols[i]["ADP90"] for i in range(Ns)]
+dVmaxs=[sols[i]["dVmax"] for i in range(Ns)]
+vrest= [sols[i]["Vrepos"] for i in range(Ns)]
 
 
 qoi={
@@ -200,27 +251,26 @@ qoi={
 
 
 
-
-
-
-
-
-
-kws = {"fit_intercept": False}
+alpha=1
+eps=0.75
+kws = {"fit_intercept": False,"normalize":False}
 models = {
 
     
-    #"Chaos py default":None,
-    "larsE-1": lm.Lars(normalize=False,**kws,eps=0.75,precompute=False), #COEF = 7.5e-1
-    "larsE-2": lm.Lars(normalize=False,**kws,eps=0.075,precompute=False),
-    "larsE-3": lm.Lars(normalize=False,**kws,eps=0.0075,precompute=False),
-    "larsE-4": lm.Lars(normalize=False,**kws,eps=0.00075,precompute=False),
-    "larsE-5": lm.Lars(normalize=False,**kws,eps=0.000075,precompute=False),
+    
+    "elastic net "+str(alpha): lm.ElasticNet(alpha=alpha, **kws),
+    "lasso"+str(alpha): lm.Lasso(alpha=alpha, **kws),
+    "lasso lars"+str(alpha): lm.LassoLars(alpha=alpha, **kws),
+    "lars": lm.Lars(**kws,eps=eps),
+    "orthogonal matching pursuit"+str(alpha):
+        lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
+    "ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
+    "bayesian ridge": lm.BayesianRidge(**kws),
+    
+    "least squares CP": None,
+    "least squares SKT": lm.LinearRegression(**kws),
 
 
-
- 
-  
 
 
   
@@ -240,29 +290,45 @@ models = {
         
 
 for label, model in models.items():
-    
+    print('\n--------------',"\n")
     print("Beggining ", label)
 
 
 ##Adpative algorithm chooses best fit in deegree range
-  
+    timeL=0
     
     for qlabel,dataset in qoi.items():
-        
+        print('\n',"QOI: ", qlabel,'\n')
+
         
         loos= np.zeros((pmax-pmin+1))
+        timeL= np.zeros((pmax-pmin+1))
+        
         pols=[]
         for P in list(range(pmin,pmax+1,1)):  
             
+            print('\n')
+            print('D=',P)
+
 
             start = timeit.default_timer()
             poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
-            fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)     
-            loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
-            print('D=',P,"loo =","{:e}".format(loos[P-pmin]),"\n")
-            pols.append(fitted_polynomial)
+            fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)  
             stop = timeit.default_timer()
-            print('Time to generate exp and loo: ', stop - start) 
+            time=stop-start
+            print('Time to generate exp: ',time) 
+
+
+            start = timeit.default_timer()
+            loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
+            stop = timeit.default_timer()
+            timeL[P-pmin]=stop-start
+            print('Time to LOO: ',timeL[P-pmin],'LOO: ',loos[P-pmin]) 
+
+
+            pols.append(fitted_polynomial)
+            
+            print('\n')
         
         
         #Choose best fitted poly exp in degree range
@@ -271,6 +337,9 @@ for label, model in models.items():
         fitted_polynomial=pols[degreeIdx]
         
         
+        
+        ##
+        print('AA picked D= ',degreeIdx+pmin," Generate Validation Results") 
         ##Calculate Sobol Error
         #s1f=np.array(sensitivity['S9'])
         #sms=Sobol()
@@ -278,12 +347,17 @@ for label, model in models.items():
         maxE=0#np.max(abs(s1f- sms))
         
         #Caluclate Validation Error
+        start = timeit.default_timer()
         YPCE=[cp.call(fitted_polynomial,sample) for sample in X]
         nErr=np.mean((YPCE-Yval[qlabel])**2)/np.var(Yval[qlabel])
+        stop = timeit.default_timer()
+        time=stop-start
+        print('Time to Validate: ',time)
         
-        
-        row=[qlabel,label,degreeIdx+pmin,nErr,loo,maxE,avgE,Ns]
+        row=[qlabel,label,degreeIdx+pmin,nErr,loo,maxE,avgE,Ns,timeL[degreeIdx],timeL[timeL.argmax()]]
         writer.writerow(row)
+        
+        print('--------------',"\n")
         
     # Y=l.predict(X)
     # d=Yval["ADP90"]-Y

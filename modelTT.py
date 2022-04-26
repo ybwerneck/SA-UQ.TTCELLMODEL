@@ -18,7 +18,7 @@ from SALib.analyze import sobol
 import timeit
 import re
 import collections
-
+import os
 class TTCellModel:
     tf=1000
     ti=0
@@ -103,15 +103,21 @@ class TTCellModel:
             print("ADCALCERROR")
             print(x)       
         return out
+
     
     def callCppmodel(self,params):     
-        args="C:\\s\\uriel-numeric\\Release\\cardiac-cell-solver.exe " +"--tf="+str(TTCellModel.tf)+" --ti="+str(TTCellModel.ti)+" --dt="+str(TTCellModel.dt)+" --dt_save="+str(TTCellModel.dtS)  
+        
+        name="./cardiac-cell-solver.exe"
+        if os.name == 'nt':
+            name="cardiac-cell-solver.exe"
+        args=name +" --tf="+str(TTCellModel.tf)+" --ti="+str(TTCellModel.ti)+" --dt="+str(TTCellModel.dt)+" --dt_save="+str(TTCellModel.dtS)  
         for value in params:
             if(params[value]!=-100):
                 args+= " "
                 args+=" --"+value+"="+(str(params[value]))[:9]
-        output = subprocess.Popen(args,stdout=subprocess.PIPE)
+        output = subprocess.Popen(args,stdout=subprocess.PIPE,shell=True)
         matrix={}
+
         try:
             string = output.stdout.read().decode("utf-8")
             matrix = np.matrix(string)
@@ -124,14 +130,16 @@ class TTCellModel:
             print("\n")
         
       
-       
+      
         try: 
             ads=TTCellModel.ads(matrix[:-1,1],[0.5,0.9])
-         
             return {"Wf": matrix[:-1],"dVmax":matrix[-1,1],"ADP90":ads[1],"ADP50":ads[0],"Vrepos":matrix[-2,1]}
         except:
-           
-           return {"Wf":0,"dVmax":0,"ADP90":0,"ADP50":0,"Vrepos":0}
+             print(args)
+             print(string)
+             print(params)
+             print("scorro")
+             return {"Wf":0,"dVmax":0,"ADP90":0,"ADP50":0,"Vrepos":0}
        
     def plot_sir(r, labels):
         
