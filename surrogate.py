@@ -159,14 +159,14 @@ for i,sample in enumerate(X):       ##must be matrix not list
 
 
 ##Load Result File
-f = open('resultsF.csv', 'a',newline='')
+f = open('results/numericTest.csv', 'w',newline='')
 
 
 # create the csv writer
 writer = csv.writer(f)
 
-row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns','Timeselected','Timemax']
-#writer.writerow(row)
+row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns','Timeselected','Timemax','Timeselected','Timemax']
+writer.writerow(row)
 Y = readF("Yval.txt")
 Y= np.array(Y)
 
@@ -242,9 +242,9 @@ vrest= [sols[i]["Vrepos"] for i in range(Ns)]
 
 
 qoi={
-     "ADP50":ads50,
-     #"ADP90":ads90,
-     #"Vrest":vrest,
+    # "ADP50":ads50,
+    # "ADP90":ads90,
+     "Vrest":vrest,
      "dVmax":dVmaxs,
      
      }
@@ -257,68 +257,77 @@ kws = {"fit_intercept": False,"normalize":False}
 models = {
 
     
+     "OLS CP": None,
+   
+    # "LARS": lm.Lars(**kws,eps=eps),
+    # "OMP"+str(alpha):
+    #     lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
+    "OLS SKT": lm.LinearRegression(**kws),
+    #"ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
+    # "bayesian ridge": lm.BayesianRidge(**kws),
+    #"elastic net "+str(alpha): lm.ElasticNet(alpha=alpha, **kws),
+    #"lasso"+str(alpha): lm.Lasso(alpha=alpha, **kws),
+    #"lasso lars"+str(alpha): lm.LassoLars(alpha=alpha, **kws),
     
-    "elastic net "+str(alpha): lm.ElasticNet(alpha=alpha, **kws),
-    "lasso"+str(alpha): lm.Lasso(alpha=alpha, **kws),
-    "lasso lars"+str(alpha): lm.LassoLars(alpha=alpha, **kws),
-    "lars": lm.Lars(**kws,eps=eps),
-    "orthogonal matching pursuit"+str(alpha):
-        lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
-    "ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
-    "bayesian ridge": lm.BayesianRidge(**kws),
     
-    "least squares CP": None,
-    "least squares SKT": lm.LinearRegression(**kws),
-
-
-
 
   
 }
 
+##
+pltxs=2
+pltys=0
+
+while(pltys*pltxs<len(models)):
+    pltys=pltys+1
+    
 
 
-        # pols=[]
-        # for P in list(range(pmin,pmax+1,1)):  
-        #     poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
-        #     fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)     
-        #     loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
-        #     print("{:e}".format(loos[P-pmin]),"\n")
-        #     pols.append(fitted_polynomial)
-        
-        
-        
 
-for label, model in models.items():
-    print('\n--------------',"\n")
-    print("Beggining ", label)
-
-
+for qlabel,dataset in qoi.items():
+    print('\n',"QOI: ", qlabel,'\n')      
 ##Adpative algorithm chooses best fit in deegree range
     timeL=0
     
-    for qlabel,dataset in qoi.items():
-        print('\n',"QOI: ", qlabel,'\n')
-
+    fig,plotslot=plt.subplots(pltxs,pltys)
+    plotsaux=[]
+    plots=[]
+    
+    
+    try:
+        for row in plotslot:
+            for frame in row:
+                plotsaux.append(frame)
+    except:
+        for frame in plotslot:
+            plotsaux.append(frame)
         
+    
+    for i in range(0,len(plotsaux)):
+        plots.append(plotsaux.pop())
+    pltidx=0
+    fig.suptitle(qlabel)
+    for label, model in models.items():
+        
+        print('\n--------------',"\n")
+        print("Beggining ", label)
         loos= np.zeros((pmax-pmin+1))
+        gF= np.zeros((pmax-pmin+1))
         timeL= np.zeros((pmax-pmin+1))
         
         pols=[]
-        for P in list(range(pmin,pmax+1,1)):  
-            
+        for P in list(range(pmin,pmax+1,1)):             
             print('\n')
             print('D=',P)
-
-
+            #generate and fit expansion            
             start = timeit.default_timer()
             poly_exp = cp.generate_expansion(P, dist,rule="three_terms_recurrence")
-            fitted_polynomial = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)  
+            fp = cp.fit_regression (poly_exp,samples,dataset,model=model,retall=False)  
             stop = timeit.default_timer()
             time=stop-start
             print('Time to generate exp: ',time) 
-
-
+            #calculate loo error
+            gF[P-pmin]=time
             start = timeit.default_timer()
             loos[P-pmin]=calcula_loo(dataset,poly_exp,samples,model)
             stop = timeit.default_timer()
@@ -326,25 +335,23 @@ for label, model in models.items():
             print('Time to LOO: ',timeL[P-pmin],'LOO: ',loos[P-pmin]) 
 
 
-            pols.append(fitted_polynomial)
+            pols.append(fp)
             
             print('\n')
         
         
-        #Choose best fitted poly exp in degree range
+        #Choose best fitted poly exp in degree range->lowest loo error
         degreeIdx=loos.argmin()
         loo=loos[degreeIdx]
         fitted_polynomial=pols[degreeIdx]
-        
-        
-        
         ##
         print('AA picked D= ',degreeIdx+pmin," Generate Validation Results") 
+        
         ##Calculate Sobol Error
         #s1f=np.array(sensitivity['S9'])
         #sms=Sobol()
         avgE=0#np.mean(abs(s1f- sms))
-        maxE=0#np.max(abs(s1f- sms))
+        maxE=0#np.max(abs(s1f- sms)) 
         
         #Caluclate Validation Error
         start = timeit.default_timer()
@@ -352,27 +359,22 @@ for label, model in models.items():
         nErr=np.mean((YPCE-Yval[qlabel])**2)/np.var(Yval[qlabel])
         stop = timeit.default_timer()
         time=stop-start
-        print('Time to Validate: ',time)
-        
-        row=[qlabel,label,degreeIdx+pmin,nErr,loo,maxE,avgE,Ns,timeL[degreeIdx],timeL[timeL.argmax()]]
-        writer.writerow(row)
-        
+        print('Time to Validate: ',time)   
+        row=[qlabel,label,degreeIdx+pmin,              
+        f"{nErr:.2E}",f"{loo:.2E}",maxE,avgE,Ns,timeL[degreeIdx],timeL[timeL.argmax()],gF[degreeIdx],gF[gF.argmax()]]
+        writer.writerow(row)       
         print('--------------',"\n")
         
-    # Y=l.predict(X)
-    # d=Yval["ADP90"]-Y
-    # np.mean(d**2)/np.var(Yval["ADP90"])
-
-    
-    # # fig, axs = plt.subplots(2, 2)
-    # # plt=axs[0,0]
-    # # plt.set_title('ADP90')
-    # # Ytrue=Yval[:,0]
-    # # plt.scatter(Ytrue,YPCE)
-    # # plt.plot(Ytrue,Ytrue,"black",linewidth=2)
-    # # plt.plot()
-    # # plt.set(xlabel="Y_true",ylabel="Y_pred")
-    
+        ##PLOT RESULTS
+        
+        p=plots.pop()
+        pltidx=pltidx+1
+        p.set_title(label)
+        Ytrue=Yval[qlabel]
+        p.plot(Ytrue,Ytrue,"black",linewidth=2)
+        p.scatter(Ytrue,YPCE)
+     
+        p.set(xlabel="Y_true",ylabel="Y_pred")
    
     
     
