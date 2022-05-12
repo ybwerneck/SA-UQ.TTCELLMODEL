@@ -61,7 +61,6 @@ class TTCellModel:
         TTCellModel.tf=tf
         TTCellModel.dt=dt
         TTCellModel.dtS=dtS
-        return (400, 2)
     @staticmethod   #runs the model once for the given size parameters and returns the time points at wich there is evalution
     def getEvalPoints():
         n=TTCellModel("").run()["Wf"]
