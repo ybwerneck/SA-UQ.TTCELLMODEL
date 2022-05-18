@@ -31,6 +31,8 @@ def Model(sample):
     return TTCellModel(sample).run()
 
 
+#PARAMETERS
+
 #Parameters of interest X
 
 gK1=  5.4050e+00 
@@ -41,6 +43,8 @@ gbna =  2.90e-04
 gCal =   1.750e-04 
 gbca = 5.920e-04
 gto =  2.940e-01 
+
+
 
 low=0.9
 high=1.1
@@ -53,29 +57,45 @@ gNad  = cp.Uniform(gNa*low,gNa*high)
 gCald = cp.Uniform(gCal*low,gCal*high)
 dist = cp.J(gK1d,gKsd,gKrd,gtod,gNad,gCald)
 
-nPar=6
-p = 2 # polynomial degree
-Np = math.factorial ( nPar+ p ) / ( math.factorial (nPar) * math.factorial (p))
-m = 6      # multiplicative factor
-Ns = 50#m * Np # number of samples
 
-Nv=100+Ns
+
+#Fitting parameters
+nPar=6
+Ns = 500#m * Np # number of samples
+Nv=10000 + Ns
+
+#normalization options
+normalizarqoi=True
+normalizarX=False
+normalizationMethod='skt'  #normal or skt
+
+
+
 print("Samples",Ns)
 print("Samples Validation ",Nv)
+
+foldername='xnn'
+
+
+f="datasets/"+foldername+"/"+ str(Ns) + "/"
+if(normalizationMethod!='normal' and normalizationMethod!='' ): # store results in a separate folder for skt normalized datasets    
+    f="datasets/skt/"+foldername+"/"+ str(Ns) + "/"
+    
  
-f="datasets/teste/"+ str(Ns) + "/"
+print(f)
 
 
 #Sample the parameter distributio
 start = timeit.default_timer()
 samples = dist.sample(Ns,rule="latin_hypercube", seed=1234)
+samplesaux=copy.copy(samples)
 stop = timeit.default_timer()
 print('Time to sample Dist: ',stop-start)
 
 
 start = timeit.default_timer()
 samplesV = dist.sample(Nv ,rule="latin_hypercube", seed=1234)
-samplesaux=copy.copy(samplesV)
+samplesVaux=copy.copy(samplesV)
 stop = timeit.default_timer()
 print('Time to sample Dist V: ',stop-start)
 
@@ -106,10 +126,10 @@ print('Time to run Model training Set: ',stop-start)
 
 
 
-#Run training set
+#Run validation set
 
 start = timeit.default_timer()
-sols=runModelParallel(samples,Model)
+sols=runModelParallel(samplesV,Model)
 stop = timeit.default_timer()
 print('Time to run Model Validation set: ',stop-start)
 
@@ -127,16 +147,17 @@ qoiV={
      }
 
 
+
+
+
 # #NORMALIZE
-mx=np.zeros(nPar)
-mn=np.zeros(nPar)
-for i in range(nPar):
-      mx[i]= max(max(samples[i]),max(samplesV[i]))
-      mn[i] = min(min(samples[i]),min(samplesV[i]))  
-      samples[i]=normalizeMultipleArrays(samples[i],0,1,mn[i],mx[i])
-      samplesV[i]=normalizeMultipleArrays(samplesaux[i],0,1,mn[i],mx[i])
 
+for i in range(nPar): #even if the output is a non-normalized array, a normalized array is used for treating the set
+    samples[i],samplesV[i]=normalizeTwoArrays(samples[i], samplesV[i],0,1, normalizationMethod)
 
+if(normalizarqoi):
+     for qlabel in qoi:  
+        qoi[qlabel],qoiV[qlabel]=normalizeTwoArrays(qoi[qlabel],qoiV[qlabel], 0,1,normalizationMethod)
 
 
 
@@ -148,7 +169,7 @@ print("Removing closest points")
 
 
 #REMOVE CLOSES POINT IN VALIDATION SET TO EACH POINT IN TRAINING SET
-find,i,retrys=np.zeros(Ns),0,0
+difs,i,retrys=np.zeros(Ns),0,0
 start = timeit.default_timer()
 idtoremv=np.zeros(Ns,dtype=int)-1
 svt=samplesV.T
@@ -160,9 +181,9 @@ for sample in samples.T:
          hit,ii = kdt.query(sample,k=t+1) #find the closes point, if the point is already mark to be removed, select the next closest until find a point not marked
          if(t>=1):
              ii=ii[t]
-             find[i]=hit[t]
+             difs[i]=hit[t]
          else :
-             find[i]=hit
+             difs[i]=hit
             
          if(False==np.any(idtoremv==ii)):    
              flag=False
@@ -175,14 +196,23 @@ for sample in samples.T:
     idtoremv[i]=ii
     i=i+1    
 
-svt=np.delete(svt,idtoremv,0)
+
+if(normalizarX==False):
+    svt=np.delete(samplesVaux.T,idtoremv,0)
+else:
+    svt=np.delete(svt,idtoremv,0)
+    
 for ql,dt in qoiV.items():
     qoiV[ql]=np.delete(dt,idtoremv,0)
     
-print("AVG DISTANCE",np.mean(find))
-print("MAX DISTANCE",np.max(find))
-print("Min DISTANCE",np.min(find))
-print("EXACT MATCHES",np.count_nonzero(find==0))
+    
+    
+    
+    
+print("AVG DISTANCE",np.mean(difs))
+print("MAX DISTANCE",np.max(difs))
+print("Min DISTANCE",np.min(difs))
+print("EXACT MATCHES",np.count_nonzero(difs<=0.01)) ##0.01 tolerance
 print("Retrys",retrys)
 samplesV=svt.T
 
@@ -204,6 +234,9 @@ except:
 
 file=open(f+"X.csv","w", newline='') 
 writer = csv.writer(file)
+if(normalizarX==False):
+    samples=samplesaux
+    
 for row in samples.T:
     writer.writerow(row)
 file.close()
@@ -216,20 +249,20 @@ file.close()
 
 
 
-for qlabel,dataset in qoi.items():
-    Y=normalize(dataset, 0,1)
+for qlabel in qoi:
+    Y=qoi[qlabel]
+    Yval=qoiV[qlabel]
     file=open(f+qlabel+".csv","w", newline='')
     np.savetxt(file,Y, fmt='%.8f')
     file.close()
-
-
-
-for qlabel,dataset in qoiV.items():
-    Y=normalize(dataset, 0,1)
     file=open(f+"/validation/"+qlabel+".csv","w", newline='')
-    np.savetxt(file,Y, fmt='%.8f')
+    np.savetxt(file,Yval, fmt='%.8f')
     file.close()
 
+
+
+
+   
 
 
 

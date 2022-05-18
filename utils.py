@@ -8,19 +8,43 @@ import numpy as np
 import chaospy as cp
 from SALib.sample import saltelli
 from SALib.analyze import sobol
-
+from sklearn.preprocessing import normalize as normalizeSkt
 import ray
 
-PROCESSN=2
-ray.init(ignore_reinit_error=True,num_cpus=PROCESSN,log_to_driver=True)    
+PROCESSN=10
 
-def normalize(arr, t_min, t_max):
-    return normalizeMultipleArrays(arr, t_min, t_max, min(arr), max(arr))
+try:
+        ray.init(ignore_reinit_error=False,num_cpus=PROCESSN,log_to_driver=False)    
+except:
+        ray.shutdown()
+        ray.init(ignore_reinit_error=False,num_cpus=PROCESSN,log_to_driver=False)    
 
-def normalizeMultipleArrays(arr, t_min, t_max,gmin,gmax):
+
+def normalizeTwoArrays(x,y,mmin,mmax,method='normal'): #append two arrays, normalize as a single array, re-separate and return
+    
+    nx=np.shape(x)[0]
+    ny=np.shape(y)[0]
+    
+    temp=np.zeros(nx+ny)
+    temp[0:nx]=x
+    temp[-ny:]=y
+    
+    if(method=='normal'):
+        temp=normalize(temp,mmin,mmax)
+    elif(method=='skt' or method=="SKT"):
+        if(mmin!=0 or mmax!=1):
+            raise("SKT only accepts unit normalization")
+        temp=normalizeSkt(temp.reshape(1,-1))[0]
+    else:
+        raise("Invalid method")
+    
+    return temp[0:nx],temp[-ny:]
+    
+    
+def normalize(arr, t_min=0, t_max=1):
     norm_arr = []
     diff = t_max - t_min
-    diff_arr = gmax-gmin    
+    diff_arr = max(arr)-min(arr)    
     for i in arr:
         temp = (((i - min(arr))*diff)/diff_arr) + t_min
         norm_arr.append(temp)

@@ -35,18 +35,18 @@ def ModelPCE(exp):
 
 ##Reference Value for Sobol Indexes Error calculation
 
-Ns = 50
+Ns = 500
 pmin,pmax=2,4
 
 qoi={
      "ADP50",
-     #"ADP90",
-     #"Vrest",
-     #"dVmax"
+     "ADP90",
+     "Vrest",
+     "dVmax"
      
 }
 
-folder="datasets/teste/"+str(Ns)+"/"
+folder="datasets/xnn/"+str(Ns)+"/"
 
 try:
     os.mkdir(folder+"results/")
@@ -134,15 +134,15 @@ for qlabel in qoi:
 
 alpha=1
 eps=0.75
-kws = {"fit_intercept": False,"normalize":False}
+kws = {"fit_intercept": False}
 models = {
 
     
      "OLS CP": None,
    
      "LARS": lm.Lars(**kws,eps=eps),
-     "OMP"+str(alpha):
-         lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
+   # "OMP"+str(alpha):
+    #     lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
     "OLS SKT": lm.LinearRegression(**kws),
     "ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
     # "bayesian ridge": lm.BayesianRidge(**kws),
@@ -262,8 +262,10 @@ for qlabel,dataset in Y.items():
         p.scatter(YVAL,YPCE)
      
         p.set(xlabel="Y_true",ylabel="Y_pred")
+        for ax in fig.get_axes():
+            ax.label_outer()
         p.get_figure().savefig(folder+"results/"+qlabel+"_validation_results.png")
-    
+        
     
     
 # close the file
