@@ -46,7 +46,7 @@ qoi={
      
 }
 
-folder="datasets/xnn/"+str(Ns)+"/"
+folder="datasets/nn/"+str(Ns)+"/"
 
 try:
     os.mkdir(folder+"results/")
@@ -87,7 +87,7 @@ f = open(folder+'/results/numeric.csv', 'w',newline='')
 # create the csv writer
 writer = csv.writer(f)
 
-row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns','Timeselected','Timemax','Timeselected','Timemax']
+row=['QOI',	'Method', 'Degree','Val. error',' LOOERROR','Max Sobol Error','Mean Sobol Error','Ns','Timeselected','Timemax','Timeselected G','TimemaxG','Time T']
 writer.writerow(row)
 
 #Load datasets
@@ -141,10 +141,11 @@ models = {
      "OLS CP": None,
    
      "LARS": lm.Lars(**kws,eps=eps),
-   # "OMP"+str(alpha):
-    #     lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
     "OLS SKT": lm.LinearRegression(**kws),
-    "ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
+    #"ridge"+str(alpha): lm.Ridge(alpha=alpha, **kws),
+    "OMP"+str(alpha):
+         lm.OrthogonalMatchingPursuit(n_nonzero_coefs=3, **kws),
+    
     # "bayesian ridge": lm.BayesianRidge(**kws),
     "elastic net "+str(alpha): lm.ElasticNet(alpha=alpha, **kws),
     "lasso"+str(alpha): lm.Lasso(alpha=alpha, **kws),
@@ -190,12 +191,14 @@ for qlabel,dataset in Y.items():
     fig.suptitle(qlabel)
     for label, model in models.items():
         
+        
         print('\n--------------',"\n")
         print("Beggining ", label)
         loos= np.zeros((pmax-pmin+1))
         gF= np.zeros((pmax-pmin+1))
         timeL= np.zeros((pmax-pmin+1))
         
+        startT=timeit.default_timer()
         pols=[]
         for P in list(range(pmin,pmax+1,1)):             
             print('\n')
@@ -220,7 +223,8 @@ for qlabel,dataset in Y.items():
             
             print('\n')
         
-        
+        stopT = timeit.default_timer()
+        TT=stopT-startT
         #Choose best fitted poly exp in degree range->lowest loo error
         degreeIdx=loos.argmin()
         loo=loos[degreeIdx]
@@ -248,7 +252,7 @@ for qlabel,dataset in Y.items():
         time=stop-start
         print('Time to Validate: ',time)   
         row=[qlabel,label,degreeIdx+pmin,              
-        f"{nErr:.2E}",f"{loo:.2E}",maxE,avgE,Ns,timeL[degreeIdx],timeL[timeL.argmax()],gF[degreeIdx],gF[gF.argmax()]]
+        f"{nErr:.2E}",f"{loo:.2E}",maxE,avgE,Ns,timeL[degreeIdx],timeL[timeL.argmax()],gF[degreeIdx],gF[gF.argmax()],TT]
         writer.writerow(row)       
         print('--------------',"\n")
         

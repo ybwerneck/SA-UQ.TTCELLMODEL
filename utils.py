@@ -97,12 +97,12 @@ def looT(samps,y,idx,deltas,base,model):
 def calcula_deltas(y,poly_exp,samps,model,ii,ifn):
  nsamp = np.shape(y)[0] 
  blocoDeltas=np.zeros(ifn-ii + 1)   
-
+ indices = np.linspace(0,nsamp-1,nsamp, dtype=np.int32)
  for i in range(ii,ifn):
-        indices = np.linspace(0,nsamp-1,nsamp, dtype=np.int32)
-        indices = np.delete(indices,i)
-        subs_samples = samps[indices,:].copy()
-        subs_y =[ y[i] for i in (indices)]
+        
+        indicesa = np.delete(indices,i)
+        subs_samples = samps[indicesa,:].copy()
+        subs_y =[ y[i] for i in (indicesa)]
         subs_poly = cp.fit_regression (poly_exp,subs_samples.T,subs_y,model=model,retall=False) 
         yhat = cp.call(subs_poly, samps[i,:])
         blocoDeltas[i-ii] = ((y[i] - yhat))**2
