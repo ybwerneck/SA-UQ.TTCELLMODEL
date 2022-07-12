@@ -20,8 +20,8 @@ labels=["gK1","gKs","gKr","gto","gNa","gCal"]
 TTCellModel.setParametersOfInterest(labels)
 ##Simple model use, usefull for
 ti=0
-ti=3000
-tf=4000
+ti=000
+tf=400
 dt=0.01
 dtS=1
 TTCellModel.setSizeParameters(ti, tf, dt, dtS)

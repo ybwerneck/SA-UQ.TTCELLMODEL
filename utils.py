@@ -11,11 +11,12 @@ from SALib.analyze import sobol
 from sklearn.preprocessing import normalize as normalizeSkt
 import ray
 
-PROCESSN=10
+PROCESSN=2
 
-try:
-        ray.init(ignore_reinit_error=False,num_cpus=PROCESSN,log_to_driver=False)    
-except:
+def init():
+    try:
+        ray.init(ignore_reinit_error=False,num_cpus=PROCESSN,log_to_driver=False)   
+    except:
         ray.shutdown()
         ray.init(ignore_reinit_error=False,num_cpus=PROCESSN,log_to_driver=False)    
 
