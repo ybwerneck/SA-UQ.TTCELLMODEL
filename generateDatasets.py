@@ -81,7 +81,7 @@ def generateDataset(nx,ny,folder,Ns,out):
     
     #Sample the parameter distributio
     start = timeit.default_timer()
-    samples = dist.sample(Ns,rule="latin_hypercube", seed=1234)
+    samples = dist.sample(Ns,rule="latin_hypercube")
     samplesaux=copy.copy(samples)
     stop = timeit.default_timer()
     if(out):        
@@ -89,7 +89,7 @@ def generateDataset(nx,ny,folder,Ns,out):
     
     
     start = timeit.default_timer()
-    samplesV = dist.sample(Nv ,rule="latin_hypercube", seed=1234)
+    samplesV = dist.sample(Nv ,rule="latin_hypercube")
     samplesVaux=copy.copy(samplesV)
     stop = timeit.default_timer()
     if(out):
@@ -170,7 +170,7 @@ def generateDataset(nx,ny,folder,Ns,out):
     start = timeit.default_timer()
     idtoremv=np.zeros(Ns,dtype=int)-1
     svt=samplesV.T
-    kdt=kd(samplesV.T,copy_data=True)
+    kdt=kd(samplesV.T)
     for sample in samples.T:
         t=0 # trys
         flag=True

@@ -10,8 +10,8 @@ from generateDatasets import generateDataset as generate_prob
 import os
 import utils
 inst={
-      "qoinn":((True,False)),
-      "xnn":((False,True)),
+      #"qoinn":((True,False)),
+      #"xnn":((False,True)),
       "nn":((False,False)),
       "n":((True,True))
       }
@@ -31,5 +31,5 @@ for i in inst:
     except:
         print("updating")
     
-    generate_prob(xn, yn, folder+i+"/", Ns,False)
+    #generate_prob(xn, yn, folder+i+"/", Ns,False)
     sol(xn,yn,folder+i+"/",Ns)

@@ -11,7 +11,7 @@ from SALib.analyze import sobol
 from sklearn.preprocessing import normalize as normalizeSkt
 import ray
 
-PROCESSN=2
+PROCESSN=4
 
 def init():
     try:

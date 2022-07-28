@@ -37,7 +37,7 @@ def surrogatefromfile(xn,yn,folder,Ns):
 
     ##Reference Value for Sobol Indexes Error calculation
     
-    pmin,pmax=2,5
+    pmin,pmax=2,4
     
     qoi={
          "ADP50",
@@ -91,7 +91,7 @@ def surrogatefromfile(xn,yn,folder,Ns):
     
     
     ##Load Result File 
-    f = open(folder+'results/numeric.csv', 'w',newline='')
+    f = open(folder+'results/numeric.csv', 'a',newline='')
     updt=os.path.exists('numeric.csv')
     f2 = open('numeric.csv', 'a',newline='')
     
